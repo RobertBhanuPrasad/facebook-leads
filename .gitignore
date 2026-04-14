@@ -1,0 +1,9 @@
+.cpcache/
+.nrepl-port
+target/
+storage/
+bin/tailwindcss
+config.env
+.dev.edn
+.shadow-cljs/
+node_modules/

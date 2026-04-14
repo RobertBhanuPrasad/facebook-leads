@@ -1,0 +1,19 @@
+{:biff/base-url #profile {:prod #join ["https://" #biff/env DOMAIN]
+                          :default "http://localhost:8080"}
+ :biff/port     #long #or [#biff/env "PORT" 8080]
+
+ :biff.xtdb/dir          "storage/xtdb"
+ :biff.xtdb/topology     #keyword "standalone"
+
+ :biff.middleware/secure        #profile {:dev false :default true}
+ :biff.middleware/cookie-secret #biff/secret COOKIE_SECRET
+ :biff/jwt-secret               #biff/secret JWT_SECRET
+
+ :facebook/client-id        #biff/secret FACEBOOK_CLIENT_ID
+ :facebook/client-secret    #biff/secret FACEBOOK_CLIENT_SECRET
+ :facebook/verify-token     #biff/env FACEBOOK_VERIFY_TOKEN
+
+ :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
+
+ :biff.tasks/main-ns                in.facebookleads
+}
