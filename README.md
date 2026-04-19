@@ -33,3 +33,126 @@ A custom **Facebook Lead Ads → CRM Integration Platform** that:
 1. Configure credentials in `config.env`.
 2. Run `clj -M:dev` to see available commands.
 3. Run `clj -M:dev dev` to start the application locally.
+
+
+
+.
+
+🧠 2. WHY WE ARE USING NGROK (Detailed but Simple)
+❓ Problem
+
+Your app runs on:
+
+http://localhost:8080
+
+👉 Facebook cannot access localhost
+
+❓ Why?
+
+Facebook servers are on the internet
+localhost = only your machine
+
+So:
+
+Facebook → cannot reach your backend ❌
+✅ Solution → ngrok
+
+ngrok creates a public URL for your local server
+
+Example:
+
+https://abc123.ngrok-free.app → http://localhost:8080
+🔁 Flow with ngrok
+User → Facebook login
+Facebook → redirects to ngrok URL
+ngrok → forwards to localhost
+Your backend → processes request
+🔥 Important Note
+
+👉 ngrok URL changes every time you restart it (free plan)
+
+⚙️ 3. HOW TO RUN NGROK (Step-by-Step)
+
+Run this command:
+
+ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true"
+🔍 Output will look like:
+Forwarding:
+https://de6f-88-198-67-220.ngrok-free.app → http://localhost:8080
+
+👉 This is your new public URL
+
+🔧 4. WHAT TO UPDATE AFTER NGROK STARTS
+
+You MUST update 2 places
+
+🔹 A. META (Facebook Developer Dashboard)
+
+Go to:
+
+👉 Facebook App → Settings → Facebook Login → Settings
+
+Update:
+✅ Valid OAuth Redirect URIs
+https://YOUR-NGROK-URL/facebook/callback
+
+Example:
+
+https://de6f-88-198-67-220.ngrok-free.app/facebook/callback
+✅ App Domains
+
+Go to:
+
+👉 App Settings → Basic
+
+Add:
+
+de6f-88-198-67-220.ngrok-free.app
+🔹 B. YOUR PROJECT (config.env)
+
+Update:
+
+DOMAIN=de6f-88-198-67-220.ngrok-free.app
+
+FACEBOOK_REDIRECT_URI=https://de6f-88-198-67-220.ngrok-free.app/facebook/callback
+🔁 FINAL STEP
+
+Restart backend:
+
+clj -M:dev dev
+⚠️ IMPORTANT RULE (VERY IMPORTANT)
+
+Every time ngrok restarts:
+
+URL changes → you MUST update:
+1. Meta Dashboard
+2. config.env
+🧩 FULL FLOW (FOR README)
+Facebook OAuth Flow
+1. User clicks "Connect with Facebook"
+2. Redirect to Facebook login
+3. User grants permissions
+4. Facebook sends code → /facebook/callback
+5. Backend exchanges code → access token
+6. Token stored in DB
+7. Backend fetches pages
+8. User sees "Select Your Page"
+🚀 NEXT DEVELOPMENT STEP
+
+Now we will:
+
+1. Select a Facebook Page
+2. Fetch leads using Graph API
+3. Store leads in database
+4. Display leads in CRM UI
+🧠 FINAL NOTE YOU CAN ADD
+Ngrok is used only for development.
+In production, we will use a fixed domain (e.g., https://app.yourdomain.com)
+so no repeated configuration is required.
+👍 DONE
+
+This is:
+
+Client-ready message ✅
+README-ready explanation ✅
+Dev setup guide ✅

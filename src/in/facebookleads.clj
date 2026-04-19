@@ -25,7 +25,11 @@
   {:biff/modules #'modules
    :biff/handler #'handler
    :biff.xtdb/dir "storage/xtdb"
-   :biff.middleware/on-error #'ui/on-error})
+   :biff.middleware/on-error #'ui/on-error
+   :biff/schema (reduce (fn [schema module]
+                          (merge schema (:schema module)))
+                        {}
+                        modules)})
 
 (defonce system (atom {}))
 

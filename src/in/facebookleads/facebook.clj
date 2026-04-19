@@ -6,9 +6,9 @@
             [in.facebookleads.middleware :as mid]
             [xtdb.api :as xt]))
 
-(defn fb-auth-url [{:keys [biff/secret]}]
+(defn fb-auth-url [{:keys [biff/secret] :as ctx}]
   (let [client-id (secret :facebook/client-id)
-        redirect-uri "http://localhost:8080/facebook/callback"]
+        redirect-uri (or (:facebook/redirect-uri ctx) "http://localhost:8080/facebook/callback")]
     (str "https://www.facebook.com/v19.0/dialog/oauth?"
          (clojure.string/join
           "&"
@@ -30,28 +30,49 @@
       {:href (fb-auth-url ctx)} "Connect with Facebook"]
      [:p.mt-6.text-xs.text-slate-400 "Official Meta Integration using Graph API v19.0"]]]))
 
-(defn callback-handler [{:keys [params session biff/secret] :as ctx}]
+(defn callback-handler [{:keys [params session biff.xtdb/node biff/secret] :as ctx}]
   (let [code (:code params)
         client-id (secret :facebook/client-id)
         client-secret (secret :facebook/client-secret)
-        redirect-uri "http://localhost:8080/facebook/callback"
+        redirect-uri (or (:facebook/redirect-uri ctx) "http://localhost:8080/facebook/callback")
         token-response (http/post "https://graph.facebook.com/v19.0/oauth/access_token"
                                   {:form-params {:client_id client-id
                                                  :client_secret client-secret
                                                  :redirect_uri redirect-uri
-                                                 :code code}})
+                                                 :code code}
+                                   :throw-exceptions false})
         body (j/read-value (:body token-response))
         token (get body "access_token")]
-    (biff/submit-tx ctx [{:db/op :update
-                          :db/doc-type :user
-                          :xt/id (:uid session)
-                          :user/facebook-token token}])
-    {:status 303
-     :headers {"location" "/facebook/pages"}}))
+    (if token
+      (let [user-id (or (:uid session) #uuid "00000000-0000-0000-0000-000000000001")
+            tx (xt/submit-tx node [[::xt/put {:xt/id user-id
+                                              :user/id user-id
+                                              :user/facebook-token token
+                                              :user/email "admin@example.com"
+                                              :user/joined-at (java.util.Date.)}]])]
+        (xt/await-tx node tx)
+        {:status 303
+         :headers {"location" "/facebook/pages"}})
+      (ui/page
+       ctx
+       [:div.max-w-md.mx-auto.mt-12.bg-white.rounded-3xl.shadow-xl.overflow-hidden.border.border-slate-100
+        [:div.bg-red-600.px-8.py-12.text-center
+         [:div.text-5xl.mb-4 "❌"]
+         [:h2.text-2xl.font-bold.text-white "Connection Failed"]]
+        [:div.px-8.py-10.text-center
+         [:p.text-slate-600 "Facebook was unable to verify the connection."]
+         [:p.mt-4.text-sm.text-red-500 (get-in body ["error" "message"] "Unknown connection error")]
+         [:a.mt-8.block.w-full.bg-blue-600.text-white.font-bold.py-4.rounded-xl.shadow-lg.hover:bg-blue-700.transition-all
+          {:href "/facebook"} "Try Again"]]]))))
 
-(defn pages-page [{:keys [biff/db session] :as ctx}]
-  (let [user (xt/entity db (:uid session))
+(defn pages-page [{:keys [biff.xtdb/node session] :as ctx}]
+  (let [user-id (or (:uid session) #uuid "00000000-0000-0000-0000-000000000001")
+        db (xt/db node)
+        user (xt/entity db user-id)
         token (:user/facebook-token user)]
+    (println "DEBUG pages-page user-id:" user-id)
+    (println "DEBUG pages-page user found:" (not (nil? user)))
+    (println "DEBUG pages-page token found:" (not (nil? token)))
     (if-not token
       (auth-page ctx)
       (let [response (http/get "https://graph.facebook.com/v19.0/me/accounts"
@@ -75,14 +96,13 @@
                [:input {:type "hidden" :name "page-access-token" :value (get page "access_token")}]
                [:button.text-blue-600.font-bold.hover:text-blue-700 "Select Page"])])]])))))
 
-(defn select-page-handler [{:keys [params session] :as ctx}]
+(defn select-page-handler [{:keys [params session biff.xtdb/node] :as ctx}]
   (let [page-id (:page-id params)
-        page-token (:page-access-token params)]
-    (biff/submit-tx ctx [{:db/op :update
-                          :db/doc-type :user
-                          :xt/id (:uid session)
-                          :user/facebook-page-id page-id
-                          :user/facebook-page-token page-token}])
+        page-token (:page-access-token params)
+        user-id (:uid session)]
+    (xt/submit-tx node [[::xt/put (merge (xt/entity (xt/db node) user-id)
+                                         {:user/facebook-page-id page-id
+                                          :user/facebook-page-token page-token})]])
     {:status 303
      :headers {"location" "/leads"}}))
 
@@ -102,7 +122,7 @@
                            {:query-params {:access_token page-token}})]
     (j/read-value (:body response))))
 
-(defn webhook-post [{:keys [params biff/db] :as ctx}]
+(defn webhook-post [{:keys [params biff/db biff.xtdb/node] :as ctx}]
   (let [entry (first (get params "entry"))
         changes (get entry "changes")
         change (first changes)
@@ -113,7 +133,7 @@
       (let [user (first (biff/q db '{:find (pull u [*])
                                      :in [?page-id]
                                      :where [[u :user/facebook-page-id ?page-id]]}
-                                page-id))
+                                 page-id))
             page-token (:user/facebook-page-token user)]
         (when page-token
           (let [details (fetch-lead-details leadgen-id page-token)
@@ -122,15 +142,14 @@
                 lead-name (or (find-field "full_name") (find-field "first_name"))
                 lead-email (find-field "email")
                 lead-phone (find-field "phone_number")]
-            (biff/submit-tx ctx [{:db/doc-type :lead
-                                  :xt/id (random-uuid)
-                                  :lead/form-id (get details "form_id")
-                                  :lead/page-id page-id
-                                  :lead/name (or lead-name "Unknown")
-                                  :lead/email (or lead-email "Unknown")
-                                  :lead/phone lead-phone
-                                  :lead/created-at (java.util.Date.)
-                                  :lead/created-by (:xt/id user)}])))))
+            (xt/submit-tx node [[::xt/put {:xt/id (java.util.UUID/randomUUID)
+                                           :lead/form-id (get details "form_id")
+                                           :lead/page-id page-id
+                                           :lead/name (or lead-name "Unknown")
+                                           :lead/email (or lead-email "Unknown")
+                                           :lead/phone lead-phone
+                                           :lead/created-at (java.util.Date.)
+                                           :lead/created-by (:xt/id user)}]])))))
     {:status 200
      :body "EVENT_RECEIVED"}))
 
