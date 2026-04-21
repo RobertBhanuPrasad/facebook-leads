@@ -4,12 +4,16 @@
             [in.facebookleads.middleware :as mid]
             [xtdb.api :as xt]))
 
-(defn leads-page [{:keys [biff/db session] :as ctx}]
-  (let [leads (biff/q db '{:find (pull l [*])
-                           :in [?user]
-                           :where [[l :lead/created-by ?user]]
-                           :order-by [[l :lead/created-at :desc]]}
-                      (:uid session))]
+(defn leads-page [{:keys [biff.xtdb/node session] :as ctx}]
+  (let [db (xt/db node)
+        user-id (or (:uid session) #uuid "00000000-0000-0000-0000-000000000001")
+        leads (->> (biff/q (xt/db node) 
+                           '{:find (pull l [*])
+                             :in [?user-id]
+                             :where [[l :lead/created-by ?user-id]]}
+                           user-id)
+                   (sort-by :lead/created-at #(compare %2 %1)))]
+    (println "SESSION DETAILS:" session)
     (ui/page
      ctx
      [:div

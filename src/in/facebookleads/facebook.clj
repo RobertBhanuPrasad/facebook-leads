@@ -99,9 +99,10 @@
 (defn select-page-handler [{:keys [params session biff.xtdb/node] :as ctx}]
   (let [page-id (:page-id params)
         page-token (:page-access-token params)
-        user-id (:uid session)]
+        user-id (or (:uid session) #uuid "00000000-0000-0000-0000-000000000001")]
     (xt/submit-tx node [[::xt/put (merge (xt/entity (xt/db node) user-id)
-                                         {:user/facebook-page-id page-id
+                                         {:xt/id user-id
+                                          :user/facebook-page-id page-id
                                           :user/facebook-page-token page-token})]])
     {:status 303
      :headers {"location" "/leads"}}))
@@ -129,14 +130,17 @@
         value (get change "value")
         leadgen-id (get value "leadgen_id")
         page-id (get value "page_id")]
+    (println "DEBUG webhook received leadgen-id:" leadgen-id "page-id:" page-id)
     (when leadgen-id
       (let [user (first (biff/q db '{:find (pull u [*])
                                      :in [?page-id]
                                      :where [[u :user/facebook-page-id ?page-id]]}
-                                 page-id))
+                                 (str page-id))) ;; Ensure it's a string
+            _ (println "DEBUG webhook found user for page:" (not (nil? user)))
             page-token (:user/facebook-page-token user)]
         (when page-token
           (let [details (fetch-lead-details leadgen-id page-token)
+                _ (println "DEBUG fetched lead details for form:" (get details "form_id"))
                 field-data (get details "field_data")
                 find-field (fn [name] (some #(when (= (get % "name") name) (first (get % "values"))) field-data))
                 lead-name (or (find-field "full_name") (find-field "first_name"))
@@ -144,7 +148,7 @@
                 lead-phone (find-field "phone_number")]
             (xt/submit-tx node [[::xt/put {:xt/id (java.util.UUID/randomUUID)
                                            :lead/form-id (get details "form_id")
-                                           :lead/page-id page-id
+                                           :lead/page-id (str page-id)
                                            :lead/name (or lead-name "Unknown")
                                            :lead/email (or lead-email "Unknown")
                                            :lead/phone lead-phone
