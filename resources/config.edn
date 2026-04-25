@@ -14,6 +14,9 @@
  :facebook/redirect-uri     #biff/env FACEBOOK_REDIRECT_URI
  :facebook/verify-token     #biff/secret FACEBOOK_VERIFY_TOKEN
 
+ :google/sheet-id           #biff/env GOOGLE_SHEET_ID
+ :google/sheet-name         #biff/env GOOGLE_SHEET_NAME
+
  :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
 
  :biff.tasks/main-ns                in.facebookleads

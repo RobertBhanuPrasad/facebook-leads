@@ -9,9 +9,7 @@
         user-id (or (:uid session) #uuid "00000000-0000-0000-0000-000000000001")
         leads (->> (biff/q (xt/db node) 
                            '{:find (pull l [*])
-                             :in [?user-id]
-                             :where [[l :lead/created-by ?user-id]]}
-                           user-id)
+                             :where [[l :lead/email _]]})
                    (sort-by :lead/created-at #(compare %2 %1)))]
     (println "SESSION DETAILS:" session)
     (ui/page
@@ -30,6 +28,7 @@
          [:tr
           [:th.p-6.text-left.text-xs.font-bold.text-slate-500.uppercase.tracking-wider "Lead Name"]
           [:th.p-6.text-left.text-xs.font-bold.text-slate-500.uppercase.tracking-wider "Contact Info"]
+          [:th.p-6.text-left.text-xs.font-bold.text-slate-500.uppercase.tracking-wider "Source"]
           [:th.p-6.text-left.text-xs.font-bold.text-slate-500.uppercase.tracking-wider "Created At"]
           [:th.p-6.text-left.text-xs.font-bold.text-slate-500.uppercase.tracking-wider "Action"]]]
         [:tbody.divide-y.divide-slate-100
@@ -37,10 +36,16 @@
            [:tr.hover:bg-slate-50.transition-colors
             [:td.p-6
              [:div.text-sm.font-bold.text-slate-900 (:lead/name lead)]
-             [:div.text-xs.text-slate-400 (str "Form: " (:lead/form-id lead))]]
+             [:div.text-xs.text-slate-400 (str "Form: " (or (:lead/form-name lead) (:lead/form-id lead)))]]
             [:td.p-6
              [:div.text-sm.text-slate-600 (:lead/email lead)]
              [:div.text-xs.text-slate-400 (:lead/phone lead)]]
+            [:td.p-6
+             [:span.px-2.py-1.rounded-full.text-xs.font-bold
+              {:class (if (= (:lead/source lead) "google-sheet")
+                        "bg-green-100 text-green-700"
+                        "bg-blue-100 text-blue-700")}
+              (or (:lead/source lead) "Webhook")]]
             [:td.p-6.text-sm.text-slate-500
              (str (:lead/created-at lead))]
             [:td.p-6

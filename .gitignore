@@ -7,3 +7,4 @@ config.env
 .dev.edn
 .shadow-cljs/
 node_modules/
+resources/google-service-account.json

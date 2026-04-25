@@ -1,5 +1,6 @@
 (ns in.facebookleads
   (:require [com.biffweb :as biff]
+            [in.facebookleads.google-sheets :as google-sheets]
             [in.facebookleads.home :as home]
             [in.facebookleads.facebook :as facebook]
             [in.facebookleads.leads :as leads]
@@ -13,6 +14,7 @@
   [home/module
    facebook/module
    leads/module
+   google-sheets/module
    schema/module])
 
 (def routes ["" {:middleware [mid/wrap-site-defaults]}
@@ -36,7 +38,8 @@
 (def components
   [biff/use-aero-config
    biff/use-xtdb
-   biff/use-jetty])
+   biff/use-jetty
+   biff/use-chime])
 
 (defn start []
   (let [new-system (reduce (fn [system component]
