@@ -12,7 +12,7 @@
  :facebook/client-id        #biff/secret FACEBOOK_CLIENT_ID
  :facebook/client-secret    #biff/secret FACEBOOK_CLIENT_SECRET
  :facebook/redirect-uri     #biff/env FACEBOOK_REDIRECT_URI
- :facebook/verify-token     #biff/env FACEBOOK_VERIFY_TOKEN
+ :facebook/verify-token     #biff/secret FACEBOOK_VERIFY_TOKEN
 
  :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
 

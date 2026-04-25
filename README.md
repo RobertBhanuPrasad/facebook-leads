@@ -117,6 +117,21 @@ DOMAIN=de6f-88-198-67-220.ngrok-free.app
 FACEBOOK_REDIRECT_URI=https://de6f-88-198-67-220.ngrok-free.app/facebook/callback
 🔁 FINAL STEP
 
+Webhook updates:
+
+1) enter the callback url = https://c97b-103-215-165-73.ngrok-free.app/webhook/facebook
+2) enter the verify token = lead-crm-verify-token
+
+select product - page -> subscribe to leadgen
+
+ngrok checking urls - http://127.0.0.1:4040/inspect/http
+
+app subscription ->  https://developers.facebook.com/tools/explorer/?method=GET&path=1102745389586149%2Fsubscribed_apps&version=v25.0
+
+parameter -> 1102745389586149/subscribed_apps (parameter -> subscribed_fields = leadgen)
+
+delete lead -> create new lead -> check webhook --> https://developers.facebook.com/tools/lead-ads-testing
+
 Restart backend:
 
 clj -M:dev dev

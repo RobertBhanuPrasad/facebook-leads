@@ -107,14 +107,37 @@
     {:status 303
      :headers {"location" "/leads"}}))
 
-(defn webhook-get [{:keys [params biff/secret]}]
+(defn webhook-get [{:keys [params query-params biff/secret] :as ctx}]
+  (println "================ WEBHOOK VERIFY =================")
+  (println "DEBUG params:" params)
+  (println "DEBUG query-params:" query-params)
+
   (let [verify-token (secret :facebook/verify-token)
-        mode (get params "hub.mode")
-        token (get params "hub.verify_token")
-        challenge (get params "hub.challenge")]
-    (if (and (= mode "subscribe") (= token verify-token))
+
+        mode (or
+              (:hub.mode query-params)
+              (get query-params "hub.mode"))
+
+        token (or
+               (:hub.verify_token query-params)
+               (get query-params "hub.verify_token"))
+
+        challenge (or
+                   (:hub.challenge query-params)
+                   (get query-params "hub.challenge"))]
+
+    (println "DEBUG verify-token from env:" verify-token)
+    (println "DEBUG token from facebook:" token)
+    (println "DEBUG mode:" mode)
+    (println "DEBUG challenge:" challenge)
+    (println "================================================")
+
+    (if (and (= mode "subscribe")
+             (= token verify-token))
       {:status 200
+       :headers {"Content-Type" "text/plain"}
        :body challenge}
+
       {:status 403
        :body "Forbidden"})))
 
